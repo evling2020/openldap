@@ -1,0 +1,68 @@
+version: '2'
+services:
+  app:
+    restart: always
+    image: evling/openldap:latest
+    build: ./app
+    environment:
+      LDAP_LOG_LEVEL: "256"
+      LDAP_ORGANISATION: "Evling Inc."
+      LDAP_DOMAIN: "evling.tech"
+      LDAP_BASE_DN: ""
+      LDAP_ADMIN_PASSWORD: "T3h3x18iXeAVGCT3"
+      LDAP_CONFIG_PASSWORD: "Q2w4QyjjVZS3UCt2"
+      LDAP_READONLY_USER: "true"
+      LDAP_READONLY_USER_USERNAME: "reader"
+      LDAP_READONLY_USER_PASSWORD: "nfgevJhDVhPU1G67"
+      LDAP_RFC2307BIS_SCHEMA: "false"
+      LDAP_BACKEND: "mdb"
+      LDAP_TLS: "true"
+      LDAP_TLS_CRT_FILENAME: "fullchain.pem"
+      LDAP_TLS_KEY_FILENAME: "privkey.pem"
+      LDAP_TLS_DH_PARAM_FILENAME: "dhparam.pem"
+      LDAP_TLS_CA_CRT_FILENAME: "cert.pem"
+      LDAP_TLS_ENFORCE: "false"
+      LDAP_TLS_CIPHER_SUITE: "SECURE256:-VERS-SSL3.0"
+      LDAP_TLS_VERIFY_CLIENT: "never"
+      LDAP_REPLICATION: "false"
+      #LDAP_REPLICATION_CONFIG_SYNCPROV: 'binddn="cn=admin,cn=config" bindmethod=simple credentials="$$LDAP_CONFIG_PASSWORD" searchbase="cn=config" type=refreshAndPersist retry="60 +" timeout=1 starttls=critical'
+      #LDAP_REPLICATION_DB_SYNCPROV: 'binddn="cn=admin,$$LDAP_BASE_DN" bindmethod=simple credentials="$$LDAP_ADMIN_PASSWORD" searchbase="$$LDAP_BASE_DN" type=refreshAndPersist interval=00:00:00:10 retry="60 +" timeout=1 starttls=critical'
+      #LDAP_REPLICATION_HOSTS: "#PYTHON2BASH:['ldap://ldap.example.org','ldap://ldap2.example.org']"
+      KEEP_EXISTING_CONFIG: "false"
+      LDAP_REMOVE_CONFIG_AFTER_SETUP: "true"
+      LDAP_SSL_HELPER_PREFIX: "ldap"
+    tty: true
+    stdin_open: true
+    volumes:
+      - ./openldap/ldap:/var/lib/ldap
+      - ./openldap/slapd.d:/etc/ldap/slapd.d
+      - ./openldap/certs/:/container/service/slapd/assets/certs/
+    ports:
+      - "389:389"
+      - "636:636"
+    # For replication to work correctly, domainname and hostname must be
+    # set correctly so that "hostname"."domainname" equates to the
+    # fully-qualified domain name for the host.
+    domainname: "evling.tech"
+    hostname: "ldap.evling.tech"
+  
+  phpldapadmin:
+    restart: always
+    image: osixia/phpldapadmin:latest
+    environment:
+      PHPLDAPADMIN_LDAP_HOSTS: "app"
+      PHPLDAPADMIN_HTTPS: "true"
+    ports:
+      - "8443:443"
+    depends_on:
+      - app
+  
+  ssp:
+    restart: always
+    image: ltbproject/self-service-password:latest
+    volumes:
+      - ./ssp/config.inc.local.php:/var/www/conf/config.inc.local.php
+    ports:
+      - "8080:80"
+    depends_on:
+      - app
